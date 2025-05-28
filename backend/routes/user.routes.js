@@ -12,6 +12,11 @@ const signupBody = z.object({
   lastName: z.string().min(3).max(50),
 });
 
+const signinBody = z.object({
+  username: z.string(),
+  password: z.string(),
+});
+
 router.post("/signup", async (req, res) => {
   try {
     // Input checking
@@ -58,6 +63,50 @@ router.post("/signup", async (req, res) => {
     res.status(500).send({
       MSG: "Internal server error!",
       error: error,
+    });
+  }
+});
+
+router.post("/signin", async (req, res) => {
+  try {
+    const { success, error } = signinBody.safeParse(req.body);
+
+    if (!success) {
+      res.send({
+        msg: "Incorrect Inputs!",
+        error: error,
+      });
+    }
+
+    const { username, password } = req.body;
+
+    const user = await User.findOne({
+      username: username,
+      password: password,
+    });
+
+    if (!user) {
+      res.status(404).send({
+        msg: "User doesn't exists!",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user._id,
+      },
+      process.env.JWT_SECRET
+    );
+
+    res.status(200).send({
+      msg: "Sign in successful",
+      username: user.username,
+      token: token,
+    });
+  } catch (err) {
+    res.status(500).send({
+      msg: "Internal server error",
+      error: err,
     });
   }
 });
