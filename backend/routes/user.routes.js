@@ -2,6 +2,7 @@ const express = require("express");
 const User = require("../models/users.schema");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
+const { authMiddleware } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
@@ -111,4 +112,67 @@ router.post("/signin", async (req, res) => {
   }
 });
 
+const updateBody = z.object({
+  username: z.string().optional(),
+  password: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+});
+
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.body.userId;
+
+    const { success, error } = updateBody.safeParse(req.body);
+
+    if (!success) {
+      res.status(411).send({
+        msg: "Error while updating information",
+        error: error,
+      });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+    });
+
+    if (!user) {
+      res.send({
+        msg: "You must be login!",
+      });
+    }
+
+    await User.updateOne({ _id: req.userId }, req.body);
+
+    res.status(200).send({
+      msg: "User updated successfully",
+    });
+  } catch (error) {
+    res.status(500).send({
+      msg: "Internal Server error",
+    });
+  }
+});
+
+
+router.get("/profile", authMiddleware, async(req, res) =>{
+  const userId = req.body.userId;
+
+  const user = await User.findOne({
+    _id: userId
+  })
+
+  if(!user){
+    res.status(404).send({
+      msg: "User not found!"
+    })
+  }
+
+  res.status(200).send({
+    msg: "User Profile fetched successfully",
+    username: user.username,
+    firstName: user.firstName, 
+    lastName: user.lastName
+  })
+})
 module.exports = router;

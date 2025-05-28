@@ -1,34 +1,31 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
 const authMiddleware = (req, res, next) => {
-  const authHeaders = req.headers.authorization;
-
-  if (!authHeaders || !authHeaders.startsWith("Bearer")) {
-    return res.status(403).send({
-      msg: "Invalid Token format",
-    });
-  }
-
-  console.log(authHeaders);
-
-  const token = authHeaders.split("")[1];
-
   try {
-    const decoded = jwt.verify(
-      {
-        token: token,
-      },
-      JWT_SECRET
-    );
+    const token = req.header("Authorization")?.replace("Bearer ", "");
 
-    req.userId = decoded.userId;
+    if (!token) {
+      return res.status(401).json({
+        error: "Authentication required. Please provide a Bearer token",
+      });
+    }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded || !decoded.userId) {
+      return res.status(400).send({ message: "Invalid Token" });
+    }
+
+    // Set userId in request object
+    req.body = {userId: decoded.userId};
+
+    // Add this inside the try block of authMiddleware to debug
+    
     next();
   } catch (error) {
-    return res.status(403).json({
-      msg: "Invalid or expired token",
+    res.status(401).json({
+      error: "Invalid or expired token",
+      details: error.message,
     });
   }
 };
